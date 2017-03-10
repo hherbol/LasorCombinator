@@ -14,7 +14,7 @@ Return:
 #include <vector>
 #include <string>
 
-#define DEBUG 0
+#define DEBUG 1
 
 class Calculator{
 private:
@@ -22,9 +22,11 @@ private:
     char *tmpT;
     char *blocks;
     int lvl;
+    int *tmpT2;
 
 public:
     std::vector<char*> combos;
+    std::vector<int*> combos2;
     std::vector<std::string> combo_strings;
     int numB, numO; // Number of blocks, and open spots
 
@@ -32,6 +34,11 @@ public:
         tmpT = (char*) malloc(number_of_open * sizeof(char));
         for (int i = 0; i < number_of_open; i++){
             tmpT[i] = 'o';
+        }
+
+        tmpT2 = (int *) malloc(number_of_blocks * sizeof(int));
+        for (int i = 0; i < number_of_blocks; i++){
+            tmpT2[i] = -1;
         }
 
         blocks = given_blocks;
@@ -43,8 +50,11 @@ public:
 
     ~Calculator(){
         free(tmpT);
+        free(tmpT2);
         for (int i = 0; i < combos.size(); i++)
             free(combos[i]);
+        for (int i = 0; i < combos2.size(); i++)
+            free(combos2[i]);
     }
 
     void getCombo(int num, char* sub_part){ // This gets an array of all possibile board combinations
@@ -98,6 +108,38 @@ public:
 #endif
         }
         free(sub_hold);
+    }
+
+
+    // This gets an array of all possibile board combinations
+    void getCombo2(int num){
+        lvl++;
+        for(int i=num;i<(numO-numB+lvl);i++){ // ex. i=0;i<=(28-20+0) thus the first value can be set anywhere from 0 to 20
+            ////printf("lvl = %d, Range = (num,stuff) = (%d,%d)\n",lvl,num,numO-numB+lvl);getch();
+            tmpT2[lvl - 1] = i;
+            if(lvl < numB)
+                getCombo2(i+1); // Make recursive until there are numB loops
+            else{
+                combos2.push_back((int *) malloc(numB * sizeof(int)));
+                int end = combos2.size() - 1;
+                for (int j = 0; j < numB; j++){
+                    combos2[end][j] = tmpT2[j];
+                }
+            }
+        }
+        lvl--;
+#if DEBUG
+        if (lvl == 0){
+            FILE *debug2;
+            debug2 = fopen("debug", "a");
+            for (int i = 0; i < combos2.size(); i++){
+                for (int j = 0; j < numB; j++)
+                    fprintf(debug2, "%d ", combos2[i][j]);
+                fprintf(debug2, "\n");
+            }
+            fclose(debug2);
+        }
+#endif
     }
 
 };
@@ -186,7 +228,32 @@ static PyObject* py_get_combos(PyObject* self, PyObject* args, PyObject* keywds)
     fclose(debug);
 #endif
 
-    calc.getCombo(0, NULL);
+    // calc.getCombo(0, NULL);
+
+// #if DEBUG
+//     debug = fopen("debug", "a");
+//     fprintf(debug, "All combinations have been found...\n");
+//     fclose(debug);
+// #endif
+
+//     // Now, convert calc.combos to pyobject and return
+//     N_combos = calc.combos.size();
+
+//     all_combos = PyList_New(N_combos);
+//     for (int i = 0; i < N_combos; i++){
+//         sub_combo = PyList_New(calc.numO);
+//         for (int j = 0; j < calc.numO; j++){
+//             PyList_SetItem(sub_combo, j, Py_BuildValue("c", calc.combos[i][j]));
+//         }
+//         PyList_SetItem(all_combos, i, sub_combo);
+//     }
+
+//     // Free memory
+//     free(given_blocks);
+
+//     return all_combos;
+
+    calc.getCombo2(0);
 
 #if DEBUG
     debug = fopen("debug", "a");
@@ -195,16 +262,55 @@ static PyObject* py_get_combos(PyObject* self, PyObject* args, PyObject* keywds)
 #endif
 
     // Now, convert calc.combos to pyobject and return
-    N_combos = calc.combos.size();
+    N_combos = calc.combos2.size();
 
     all_combos = PyList_New(N_combos);
     for (int i = 0; i < N_combos; i++){
         sub_combo = PyList_New(calc.numO);
         for (int j = 0; j < calc.numO; j++){
-            PyList_SetItem(sub_combo, j, Py_BuildValue("c", calc.combos[i][j]));
+// #if DEBUG
+//             if (i > 0){
+//                 debug = fopen("debug", "a");
+//                 fprintf(debug, " . ");
+//                 fclose(debug);
+//             }
+// #endif
+            PyList_SetItem(sub_combo, j, Py_BuildValue("c", 'z'));
+            for (int k = 0; k < calc.numB; k++){
+                if (calc.combos2[i][k] == j){
+                    PyList_SetItem(sub_combo, j, Py_BuildValue("c", given_blocks[k]));
+                }
+            }
         }
         PyList_SetItem(all_combos, i, sub_combo);
+// #if DEBUG
+//             if (i > 0){
+//                 debug = fopen("debug", "a");
+//                 fprintf(debug, " save ");
+//                 fclose(debug);
+//             }
+//             if (i > 0){
+//                 debug = fopen("debug", "a");
+//                 fprintf(debug, " done ");
+//                 fclose(debug);
+//             }
+//         // debug = fopen("debug", "a");
+//         // fprintf(debug, "%d\t", i);
+//         // fclose(debug);
+
+//         debug = fopen("debug", "a");
+//         fprintf(debug, "\n");
+//         for (int j = 0; j < calc.numO; j++)
+//             fprintf(debug, " %c ", PyString_AsString(PyList_GetItem(sub_combo, j))[0]);
+//         fclose(debug);
+// #endif
     }
+
+#if DEBUG
+    debug = fopen("debug", "a");
+    fprintf(debug, " \n\n\nQUIT ");
+    fclose(debug);
+#endif
 
     // Free memory
     free(given_blocks);

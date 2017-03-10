@@ -5,4 +5,5 @@ blocks = ['a', 'a', 'b', 'c', 'd']
 N_Spaces = 16
 boards = nk(blocks, N_Spaces)
 
-print boards[0]
+print len(boards)
+
